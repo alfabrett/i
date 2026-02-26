@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  EVALUADOR
+}
+
+enum EstadoSolicitud {
+  BORRADOR
+  PRESENTADA
+  EVALUADA
+}
+
+model User {
+  id            String         @id @default(cuid())
+  name          String
+  email         String         @unique
+  passwordHash  String
+  role          Role           @default(EVALUADOR)
+  convocatorias Convocatoria[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Convocatoria {
+  id            String      @id @default(cuid())
+  titulo        String
+  descripcion   String
+  basesPDF      String?
+  criteriosPDF  String?
+  fechaCreacion DateTime    @default(now())
+  creadaPorId   String
+  creadaPor     User        @relation(fields: [creadaPorId], references: [id])
+  criterios     Criterio[]
+  solicitudes   Solicitud[]
+}
+
+model Criterio {
+  id               String       @id @default(cuid())
+  convocatoriaId   String
+  convocatoria     Convocatoria @relation(fields: [convocatoriaId], references: [id], onDelete: Cascade)
+  nombre           String
+  descripcion      String
+  puntuacionMaxima Float
+  evaluaciones     Evaluacion[]
+}
+
+model Solicitud {
+  id             String          @id @default(cuid())
+  convocatoriaId String
+  convocatoria   Convocatoria    @relation(fields: [convocatoriaId], references: [id], onDelete: Cascade)
+  nombreEntidad  String
+  memoriaPDF     String?
+  estado         EstadoSolicitud @default(PRESENTADA)
+  puntuacionTotal Float          @default(0)
+  evaluaciones   Evaluacion[]
+  informe        Informe?
+  createdAt      DateTime        @default(now())
+}
+
+model Evaluacion {
+  id         String    @id @default(cuid())
+  solicitudId String
+  solicitud  Solicitud @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
+  criterioId String
+  criterio   Criterio  @relation(fields: [criterioId], references: [id], onDelete: Cascade)
+  puntuacion Float     @default(0)
+  comentario String?
+
+  @@unique([solicitudId, criterioId])
+}
+
+model Informe {
+  id                String    @id @default(cuid())
+  solicitudId       String    @unique
+  solicitud         Solicitud @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
+  contenidoGenerado String
+  fecha             DateTime  @default(now())
+}
